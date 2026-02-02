@@ -20,6 +20,8 @@ DEFAULT_SCREENER_URL = (
     "fa_estltgrowth_pos,fa_roe_o15,fa_sales5years_pos,sh_price_o15,ta_highlow52w_a30h,"
     "ta_sma200_sb50,ta_sma50_pa&ft=4"
 )
+# 12-month daily candles chart per ticker (Yahoo Finance)
+CHART_URL = "https://finance.yahoo.com/chart/{ticker}?interval=1d&range=12mo"
 
 
 def main():
@@ -32,11 +34,14 @@ def main():
     stock_list = Screener.init_from_url(DEFAULT_SCREENER_URL, rows=None)
     n = len(stock_list.data)
 
-    # Short summary message (under 4096 chars)
+    # Summary with each ticker as link to 12m daily chart (HTML, under 4096 chars)
     tickers = [row.get("Ticker", "") for row in stock_list.data if row.get("Ticker")]
+    ticker_links = [
+        f'<a href="{CHART_URL.format(ticker=t)}">{t}</a>' for t in tickers if t
+    ]
     summary = (
-        f"📊 Finviz screener – {n} stocks\n"
-        f"Tickers: {', '.join(tickers)}"
+        f"📊 Finviz screener – {n} stocks (12m daily chart)\n\n"
+        + "\n".join(ticker_links)
     )
     if len(summary) > 4000:
         summary = summary[:3997] + "…"
@@ -47,10 +52,15 @@ def main():
 
     base = f"https://api.telegram.org/bot{token}"
 
-    # Send summary
+    # Send summary (HTML so ticker links are clickable)
     r = requests.post(
         f"{base}/sendMessage",
-        json={"chat_id": chat_id, "text": summary, "disable_web_page_preview": True},
+        json={
+            "chat_id": chat_id,
+            "text": summary,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        },
         timeout=30,
     )
     if not r.ok:
