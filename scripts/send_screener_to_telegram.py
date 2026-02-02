@@ -20,8 +20,8 @@ DEFAULT_SCREENER_URL = (
     "fa_estltgrowth_pos,fa_roe_o15,fa_sales5years_pos,sh_price_o15,ta_highlow52w_a30h,"
     "ta_sma200_sb50,ta_sma50_pa&ft=4"
 )
-# 12-month daily candles chart per ticker (Yahoo Finance)
-CHART_URL = "https://finance.yahoo.com/chart/{ticker}?interval=1d&range=12mo"
+# Candlestick chart: daily (1D), past 1y – user zooms to 1Y on chart (TradingView)
+CHART_URL = "https://www.tradingview.com/chart/?symbol={ticker}&interval=1D"
 
 
 def main():
@@ -40,7 +40,7 @@ def main():
         f'<a href="{CHART_URL.format(ticker=t)}">{t}</a>' for t in tickers if t
     ]
     summary = (
-        f"📊 Finviz screener – {n} stocks (12m daily chart)\n\n"
+        f"📊 Finviz screener – {n} stocks (daily candlestick, zoom to 1Y)\n\n"
         + "\n".join(ticker_links)
     )
     if len(summary) > 4000:
