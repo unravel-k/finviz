@@ -85,3 +85,32 @@ print(stock_list)
 
 stock_list.to_csv("screener_results.csv")
 print("Saved to screener_results.csv")
+
+# Charts page: open in browser, one click opens all chart tabs
+CHART_URL = "https://www.tradingview.com/chart/?symbol={ticker}&interval=1D"
+tickers = [r.get("Ticker", "") for r in stock_list.data if r.get("Ticker")]
+company = {r.get("Ticker", ""): r.get("Company", "") for r in stock_list.data}
+trs = "".join(
+    f'<tr><td><a href="{CHART_URL.format(ticker=t)}" target="_blank">{t}</a></td><td>{company.get(t, "")}</td></tr>'
+    for t in tickers if t
+)
+urls_js = ",".join(repr(CHART_URL.format(ticker=t)) for t in tickers if t)
+charts_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Finviz screener – charts</title>
+<style>body{{font-family:sans-serif;margin:1rem}} table{{border-collapse:collapse}}
+td,th{{border:1px solid #ccc;padding:6px 10px;text-align:left}} th{{background:#eee}} a{{color:#06c}}
+.btn{{margin:1rem 0;padding:10px 20px;font-size:1rem;cursor:pointer}}</style>
+</head>
+<body>
+<h1>Finviz screener – {len(tickers)} stocks</h1>
+<p>Daily candlestick (TradingView). Zoom to 1Y on each chart.</p>
+<button class="btn" onclick="openAll()">Open all charts in new tabs</button>
+<p><small>Browsers may limit how many tabs open at once; click again for the rest.</small></p>
+<table><thead><tr><th>Ticker</th><th>Company</th></tr></thead><tbody>{trs}</tbody></table>
+<script>var urls=[{urls_js}];function openAll(){{urls.forEach(function(u){{window.open(u,'_blank');}});}}</script>
+</body>
+</html>"""
+with open("screener_charts.html", "w", encoding="utf-8") as f:
+    f.write(charts_html)
+print("Saved to screener_charts.html (open in browser → click button to open all charts in new tabs)")

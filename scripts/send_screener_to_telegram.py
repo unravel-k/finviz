@@ -25,6 +25,40 @@ DEFAULT_SCREENER_URL = (
 CHART_URL = "https://www.tradingview.com/chart/?symbol={ticker}&interval=1D"
 
 
+def build_charts_html(stock_list):
+    """Build HTML page with table of chart links + 'Open all in new tabs' button."""
+    rows = stock_list.data
+    tickers = [r.get("Ticker", "") for r in rows if r.get("Ticker")]
+    chart_urls = [CHART_URL.format(ticker=t) for t in tickers if t]
+    company = {r.get("Ticker", ""): r.get("Company", "") for r in rows}
+
+    trs = "".join(
+        f'<tr><td><a href="{CHART_URL.format(ticker=t)}" target="_blank">{t}</a></td>'
+        f'<td>{company.get(t, "")}</td></tr>'
+        for t in tickers if t
+    )
+    urls_js = ",".join(repr(u) for u in chart_urls)
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Finviz screener – charts</title>
+<style>body{{font-family:sans-serif;margin:1rem}} table{{border-collapse:collapse}}
+td,th{{border:1px solid #ccc;padding:6px 10px;text-align:left}}
+th{{background:#eee}} a{{color:#06c}} .btn{{margin:1rem 0;padding:10px 20px;font-size:1rem;cursor:pointer}}</style>
+</head>
+<body>
+<h1>Finviz screener – {len(tickers)} stocks</h1>
+<p>Daily candlestick (TradingView). Zoom to 1Y on each chart.</p>
+<button class="btn" onclick="openAll()">Open all charts in new tabs</button>
+<p><small>Browsers may limit how many tabs open at once; click again for the rest.</small></p>
+<table><thead><tr><th>Ticker</th><th>Company</th></tr></thead><tbody>{trs}</tbody></table>
+<script>
+var urls = [{urls_js}];
+function openAll() {{ urls.forEach(function(u) {{ window.open(u, '_blank'); }}); }}
+</script>
+</body>
+</html>"""
+
+
 def main():
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     raw = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
@@ -51,6 +85,10 @@ def main():
     # CSV as document
     csv_str = export_to_csv(stock_list.headers, stock_list.data, filename=None)
     csv_bytes = csv_str.encode("utf-8")
+
+    # HTML page: open in browser, one click opens all chart tabs
+    charts_html = build_charts_html(stock_list)
+    charts_bytes = charts_html.encode("utf-8")
 
     base = f"https://api.telegram.org/bot{token}"
     failed = []
@@ -79,6 +117,16 @@ def main():
         )
         if not r.ok:
             failed.append((chat_id, f"sendDocument: {r.status_code} {r.text}"))
+            continue
+        # Send HTML: download, open in browser, click "Open all charts in new tabs"
+        r = requests.post(
+            f"{base}/sendDocument",
+            data={"chat_id": chat_id, "caption": "Open in browser → click button to open all charts in new tabs"},
+            files={"document": ("screener_charts.html", BytesIO(charts_bytes), "text/html")},
+            timeout=30,
+        )
+        if not r.ok:
+            failed.append((chat_id, f"sendDocument (HTML): {r.status_code} {r.text}"))
 
     if failed:
         for cid, err in failed:
