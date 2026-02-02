@@ -21,6 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e .
 
+      # TELEGRAM_CHAT_ID: one ID or comma-separated list (e.g. 1046835176,123456789)
       - name: Run screener and send to Telegram
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

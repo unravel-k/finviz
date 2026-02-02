@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Run the Finviz screener and send the results to a Telegram chat.
+Run the Finviz screener and send the results to Telegram chat(s).
 Requires env vars: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID.
+TELEGRAM_CHAT_ID: one chat ID, or comma-separated list (e.g. 123,456,789).
 """
 import os
 import sys
@@ -26,10 +27,11 @@ CHART_URL = "https://www.tradingview.com/chart/?symbol={ticker}&interval=1D"
 
 def main():
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    if not token or not chat_id:
-        print("Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID", file=sys.stderr)
+    raw = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+    if not token or not raw:
+        print("Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID (comma-separated for multiple)", file=sys.stderr)
         sys.exit(1)
+    chat_ids = [c.strip() for c in raw.split(",") if c.strip()]
 
     stock_list = Screener.init_from_url(DEFAULT_SCREENER_URL, rows=None)
     n = len(stock_list.data)
@@ -51,34 +53,38 @@ def main():
     csv_bytes = csv_str.encode("utf-8")
 
     base = f"https://api.telegram.org/bot{token}"
+    failed = []
 
-    # Send summary (HTML so ticker links are clickable)
-    r = requests.post(
-        f"{base}/sendMessage",
-        json={
-            "chat_id": chat_id,
-            "text": summary,
-            "parse_mode": "HTML",
-            "disable_web_page_preview": True,
-        },
-        timeout=30,
-    )
-    if not r.ok:
-        print(f"sendMessage failed: {r.status_code} {r.text}", file=sys.stderr)
+    for chat_id in chat_ids:
+        # Send summary (HTML so ticker links are clickable)
+        r = requests.post(
+            f"{base}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": summary,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            },
+            timeout=30,
+        )
+        if not r.ok:
+            failed.append((chat_id, f"sendMessage: {r.status_code} {r.text}"))
+            continue
+        # Send CSV file
+        r = requests.post(
+            f"{base}/sendDocument",
+            data={"chat_id": chat_id, "caption": "screener_results.csv"},
+            files={"document": ("screener_results.csv", BytesIO(csv_bytes), "text/csv")},
+            timeout=30,
+        )
+        if not r.ok:
+            failed.append((chat_id, f"sendDocument: {r.status_code} {r.text}"))
+
+    if failed:
+        for cid, err in failed:
+            print(f"Failed for chat {cid}: {err}", file=sys.stderr)
         sys.exit(1)
-
-    # Send CSV file
-    r = requests.post(
-        f"{base}/sendDocument",
-        data={"chat_id": chat_id, "caption": "screener_results.csv"},
-        files={"document": ("screener_results.csv", BytesIO(csv_bytes), "text/csv")},
-        timeout=30,
-    )
-    if not r.ok:
-        print(f"sendDocument failed: {r.status_code} {r.text}", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"Sent {n} stocks to Telegram.")
+    print(f"Sent {n} stocks to {len(chat_ids)} chat(s).")
 
 
 if __name__ == "__main__":
