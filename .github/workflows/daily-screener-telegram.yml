@@ -3,8 +3,8 @@ name: Daily screener → Telegram
 
 on:
   schedule:
-    # 12:00 UTC = 8:00 PM Singapore (SGT = UTC+8)
-    - cron: "0 12 * * *"
+    # 01:00 UTC = 9:00 AM Singapore (SGT = UTC+8)
+    - cron: "0 1 * * *"
   workflow_dispatch: # allow manual run
 
 jobs:
