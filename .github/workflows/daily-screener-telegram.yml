@@ -1,0 +1,28 @@
+# Run Finviz screener daily at 8pm Singapore time and send results to Telegram
+name: Daily screener → Telegram
+
+on:
+  schedule:
+    # 12:00 UTC = 8:00 PM Singapore (SGT = UTC+8)
+    - cron: "0 12 * * *"
+  workflow_dispatch: # allow manual run
+
+jobs:
+  screener:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install -e .
+
+      - name: Run screener and send to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scripts/send_screener_to_telegram.py

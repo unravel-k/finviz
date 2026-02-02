@@ -461,6 +461,7 @@ class Screener(object):
             "https://finviz.com/screener.ashx",
             payload={
                 "v": self._table,
+                "ft": "4",  # ensure full filter set applied (matches browser URL)
                 "t": ",".join(self._tickers),
                 "f": ",".join(self._filters),
                 "o": self._order,
