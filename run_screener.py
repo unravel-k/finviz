@@ -1,7 +1,11 @@
 import argparse
+import os
 import sys
 
 from finviz.screener import Screener
+
+# Directory where this script lives (so outputs are always here)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def list_filters(filters_dict):
@@ -83,8 +87,9 @@ n = len(stock_list.data)
 print(f"Fetched {n} stocks")
 print(stock_list)
 
-stock_list.to_csv("screener_results.csv")
-print("Saved to screener_results.csv")
+csv_path = os.path.join(SCRIPT_DIR, "screener_results.csv")
+stock_list.to_csv(csv_path)
+print(f"Saved to {csv_path}")
 
 # Charts page: open in browser, one click opens all chart tabs
 CHART_URL = "https://www.tradingview.com/chart/?symbol={ticker}&interval=1D"
@@ -111,6 +116,7 @@ td,th{{border:1px solid #ccc;padding:6px 10px;text-align:left}} th{{background:#
 <script>var urls=[{urls_js}];function openAll(){{urls.forEach(function(u){{window.open(u,'_blank');}});}}</script>
 </body>
 </html>"""
-with open("screener_charts.html", "w", encoding="utf-8") as f:
+charts_path = os.path.join(SCRIPT_DIR, "screener_charts.html")
+with open(charts_path, "w", encoding="utf-8") as f:
     f.write(charts_html)
-print("Saved to screener_charts.html (open in browser → click button to open all charts in new tabs)")
+print(f"Saved to {charts_path} (open in browser → click button to open all charts in new tabs)")
